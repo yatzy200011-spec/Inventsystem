@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Papets Marketing Corp Inventory v6.6</title>
+
+<!-- PWA SETUP -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#d32f2f">
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<style>
+*{box-sizing:border-box}body{font-family:Arial;background:#f4f4f4;margin:0;padding:10px}
+.container{max-width:900px;margin:auto;background:white;padding:20px;border-radius:10px}
+h2{color:#d32f2f;border-bottom:2px solid #d32f2f;padding-bottom:5px}
+.tabs{display:flex;gap:5px;margin-bottom:15px;flex-wrap:wrap}
+.tab-btn{flex:1;padding:10px;background:#ddd;border:none;cursor:pointer;border-radius:5px;min-width:110px;font-size:12px}
+.tab-btn.active{background:#d32f2f;color:white}
+.tab{display:none}.tab.active{display:block}
+input,button{width:100%;padding:10px;margin:5px 0;border:1px solid #ccc;border-radius:5px}
+button{background:#1976d2;color:white;border:none;font-weight:bold;cursor:pointer}
+.btn-success{background:#388e3c}.btn-warning{background:#f57c00}.btn-danger{background:#d32f2f}.btn-word{background:#2b579a}.btn-release{background:#6a1b9a}.btn-backup{background:#00897b}
+#reader{width:100%}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:11px}
+table,th,td{border:1px solid #ddd}th,td{padding:6px;text-align:left}th{background:#d32f2f;color:white}
+.qr-card{display:inline-block;margin:10px;text-align:center;border:2px solid #1976d2;padding:10px;width:200px;background:white;border-radius:8px;vertical-align:top}
+.qr-card.released{border-color:#6a1b9a;background:#f3e5f5}
+.qr-card.hidden{display:none}.qr-label{font-size:10px;line-height:1.3;margin-bottom:8px}
+.btn-download{background:#388e3c;font-size:11px;padding:6px}.btn-delete{background:#d32f2f;font-size:11px;padding:6px;margin-top:3px}
+.alert{padding:10px;border-radius:5px;margin:10px 0}.alert-success{background:#c8e6c9}.alert-warning{background:#fff9c4}
+.scan-popup{background:#e3f2fd;padding:15px;border-radius:8px;margin:10px 0;border:2px solid #1976d2}
+.search-box{background:#fff3cd;padding:10px;border-radius:5px;margin-bottom:15px}
+.month-folder{background:#e3f2fd;border:2px solid #1976d2;padding:15px;margin:10px 0;border-radius:8px;cursor:pointer}
+.month-folder:hover{background:#bbdefb}
+.month-details{display:none;margin-top:10px}
+.backup-box{background:#e0f2f1;border:2px solid #00897b;padding:15px;border-radius:8px;margin:15px 0}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>PAPETS MARKETING CORP INVENTORY SYSTEM</h2>
+<div class="tabs no-print">
+<button class="tab-btn active" onclick="openTab('add',this)">1. Add</button>
+<button class="tab-btn" onclick="openTab('scan',this)">2. Scan</button>
+<button class="tab-btn" onclick="openTab('released',this)">3. Released</button>
+<button class="tab-btn" onclick="openTab('history',this)">4. History</button>
+<button class="tab-btn" onclick="openTab('backup',this)">5. Backup</button>
+</div>
+<div id="add" class="tab active"><h3>Repo Inventory(TSOKIN)</h3><input type="text" id="brand" placeholder="Brand - Ex: Honda"><input type="text" id="model" placeholder="Model - Ex: Click 160"><input type="text" id="color" placeholder="Color - Ex: Black"><input type="text" id="engine" placeholder="Engine #"><input type="text" id="chassis" placeholder="Chassis #"><input type="text" id="prevOwner" placeholder="Previous Owner"><input type="text" id="defaultLocation" placeholder="Default Location - Ex: Warehouse"><button onclick="addUnit()">Add Unit</button><div class="search-box"><h3>🔍 Search Motorcycle</h3><input type="text" id="searchInput" placeholder="Search..." onkeyup="searchMotorcycle()"><p><small>In Stock: <span id="unitCount">0</span> | Released: <span id="releasedCount">0</span></small></p></div><h3>In Stock Units</h3><div id="qrList"></div></div>
+<div id="scan" class="tab"><h3>Monthly Inventory: <span id="currentMonth"></span></h3><div id="reader" class="no-print"></div><button class="no-print btn-warning" onclick="startScanner()">Start Scanner</button><button class="no-print btn-danger" onclick="stopScanner()">Stop Scanner</button><div id="scanPopup" class="scan-popup" style="display:none;"><h4>✅ Na-scan: <span id="scannedModel"></span></h4><p><b>Prev Owner:</b> <span id="scannedOwner"></span></p><p><b>Last Location:</b> <span id="lastLocation"></span></p><input type="text" id="newLocation" placeholder="Update Location"><button class="btn-success" onclick="saveLocation()">Save & Next Scan</button></div><h4>Scanned: <span id="scannedCount">0</span> / <span id="totalCount">0</span></h4><div id="scanResult"></div><button class="btn-success no-print" onclick="finishInventory()">Finish & Save</button><button class="no-print btn-word" id="exportWordBtn" style="display:none;" onclick="exportToWord()">📄 Export Word</button></div>
+<div id="released" class="tab"><h3>📤 Released / Sold Units</h3><div id="releasedList"></div></div>
+<div id="history" class="tab"><h3>📁 Inventory History</h3><div id="historyList"></div></div>
+<div id="backup" class="tab"><h3>💾 Backup & Restore</h3><div class="backup-box"><h4>1. Export Backup</h4><button class="btn-backup" onclick="exportBackup()">⬇️ Download Backup File</button></div><div class="backup-box"><h4>2. Import Backup</h4><input type="file" id="importFile" accept=".json"><button class="btn-warning" onclick="importBackup()">⬆️ Restore from File</button></div></div>
+</div>
+<script>
+let db=JSON.parse(localStorage.getItem('motoDBv66'))||{units:{},released:{},history:{}};
+let scannedToday=new Set();let scanner;let currentScannedId=null;let lastInventoryResult=null;
+function openTab(n,b){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));document.getElementById(n).classList.add('active');b.classList.add('active');if(n=='history')loadHistory();if(n=='scan')updateCounts();if(n=='released')loadReleased();if(n=='add')loadAllUnits();}
+function addUnit(){let id=`MOTO-${Date.now()}`;let unit={brand:brand.value,model:model.value,color:color.value,engine:engine.value,chassis:chassis.value,prevOwner:prevOwner.value,location:defaultLocation.value,dateIn:new Date().toLocaleDateString()};if(!unit.engine||!unit.chassis)return alert('Engine and Chassis required!');db.units[id]=unit;saveDB();makeCard(id,unit);clearInputs();updateCounts();alert('Unit Added!');}
+function makeCard(id,u){let d=document.createElement('div');d.className='qr-card';d.id='card-'+id;d.setAttribute('data-search',`${id} ${u.brand} ${u.model} ${u.color} ${u.engine} ${u.chassis} ${u.prevOwner} ${u.location}`.toLowerCase());d.innerHTML=`<canvas id="qr-${id}"></canvas><div class="qr-label"><b>${id}</b><br>${u.brand} ${u.model}<br><b style="color:red">Prev: ${u.prevOwner||'N/A'}</b></div><button class="btn-download no-print" onclick="dl('${id}')">⬇️ QR</button><button class="btn-release no-print" onclick="releaseUnit('${id}')">📤 Release</button><button class="btn-delete no-print" onclick="del('${id}')">🗑️ Delete</button>`;document.getElementById('qrList').appendChild(d);QRCode.toCanvas(document.getElementById(`qr-${id}`),id,{width:160});}
+function loadAllUnits(){document.getElementById('qrList').innerHTML="";for(let id in db.units){makeCard(id,db.units[id]);}}
+function releaseUnit(id){let buyer=prompt('Buyer Name:');if(!buyer||buyer.trim()=='')return;let price=prompt('Selling Price:');if(price==null)return;let date=new Date().toLocaleDateString();let unitData=JSON.parse(JSON.stringify(db.units[id]));db.released[id]={...unitData,buyer:buyer,price:price,dateReleased:date};delete db.units[id];saveDB();document.getElementById('card-'+id).remove();updateCounts();alert(`Released to ${buyer}`);}
+function loadReleased(){let h='';let count=0;for(let id in db.released){let u=db.released[id];count++;h+=`<div class="qr-card released"><b>${id}</b><br>${u.brand} ${u.model}<br><b>Buyer:</b> ${u.buyer}<br><b>Price:</b> ₱${u.price}<br><b>Date:</b> ${u.dateReleased}<br><button class="btn-delete" onclick="unrelease('${id}')">↩️ Return to Stock</button></div>`;}document.getElementById('releasedList').innerHTML=h||'No released units yet';}
+function unrelease(id){db.units[id]=JSON.parse(JSON.stringify(db.released[id]));delete db.released[id];saveDB();loadReleased();if(document.getElementById('add').classList.contains('active'))loadAllUnits();updateCounts();alert('Returned to Stock');}
+function dl(id){let u=db.units[id];let c=document.createElement('canvas'),x=c.getContext('2d');c.width=400;c.height=500;x.fillStyle='white';x.fillRect(0,0,400,500);let t=document.createElement('canvas');QRCode.toCanvas(t,id,{width:300},()=>{x.drawImage(t,50,20,300,300);x.fillStyle='black';x.font='bold 28px Arial';x.textAlign='center';x.fillText('PREVIOUS OWNER',200,360);x.font='bold 32px Arial';x.fillStyle='#d32f2f';x.fillText((u.prevOwner||'N/A').toUpperCase(),200,410);x.font='16px Arial';x.fillStyle='black';x.fillText(`${u.brand} ${u.model}`,200,450);x.fillText(id,200,475);let a=document.createElement('a');a.download=`${u.brand}-${u.model}.png`;a.href=c.toDataURL();a.click();});}
+function searchMotorcycle(){let s=searchInput.value.toLowerCase();document.querySelectorAll('.qr-card').forEach(x=>{if(x.getAttribute('data-search').includes(s)){x.classList.remove('hidden')}else{x.classList.add('hidden')}});}
+function del(id){if(confirm(`Delete ${db.units[id].brand} ${db.units[id].model}?`)){delete db.units[id];saveDB();document.getElementById('card-'+id).remove();updateCounts();}}
+function startScanner(){reader.innerHTML="";scanner=new Html5Qrcode("reader");scanner.start({facingMode:"environment"},{fps:10,qrbox:250},onScan).catch(e=>alert(e));}
+function stopScanner(){if(scanner){scanner.stop().catch(()=>{});reader.innerHTML="";}}
+function onScan(txt){if(db.units[txt]&&!scannedToday.has(txt)){currentScannedId=txt;let u=db.units[txt];scanPopup.style.display='block';scannedModel.innerText=u.brand+' '+u.model;scannedOwner.innerText=u.prevOwner||'N/A';lastLocation.innerText=u.location||'N/A';newLocation.value=u.location||'';stopScanner();if(navigator.vibrate)navigator.vibrate(200);}else if(scannedToday.has(txt)){alert('Na-scan na!');}else{alert('Not found or Already Released!');}}
+function saveLocation(){db.units[currentScannedId].location=newLocation.value;scannedToday.add(currentScannedId);saveDB();scanPopup.style.display='none';scannedCount.innerText=scannedToday.size;showResult();startScanner();}
+function showResult(){let h='<table><tr><th>ID</th><th>Model</th><th>Location</th></tr>';scannedToday.forEach(id=>{let u=db.units[id];h+=`<tr><td>${id}</td><td>${u.brand} ${u.model}</td><td>${u.location}</td></tr>`});scanResult.innerHTML=h+'</table>';}
+function finishInventory(){let m=new Date().toISOString().slice(0,7);let total=Object.keys(db.units).length;let scannedList=[];scannedToday.forEach(id=>scannedList.push({id,...db.units[id]}));let missing=[];for(let id in db.units)if(!scannedToday.has(id))missing.push({id,...db.units[id]});lastInventoryResult={month:m,totalUnits:total,scannedCount:scannedList.length,scanned:scannedList,missing:missing,date:new Date().toLocaleString()};db.history[m]=lastInventoryResult;saveDB();let r=`<div class="alert ${missing.length==0?'alert-success':'alert-warning'}"><h3>✅ SCANNED: ${scannedList.length} / ${total}</h3>`;if(scannedList.length>0){r+=`<table><tr><th>Prev Owner</th><th>Motor</th><th>Color</th><th>Chassis</th><th>Engine</th><th>Location</th></tr>`;scannedList.forEach(u=>r+=`<tr><td>${u.prevOwner||'N/A'}</td><td>${u.brand} ${u.model}</td><td>${u.color}</td><td>${u.chassis}</td><td>${u.engine}</td><td>${u.location}</td></tr>`);r+=`</table>`;}r+=`</div>`;scanResult.innerHTML=r;exportWordBtn.style.display='block';scannedToday.clear();}
+function exportToWord(){if(!lastInventoryResult)return alert('Finish first!');generateWordFile(lastInventoryResult);}
+function generateWordFile(data){let {month,scannedCount,scanned}=data;let html=`<html><head><meta charset="UTF-8"></head><body><h1 style="color:#d32f2f;text-align:center">INVENTORY REPORT - ${month}</h1><table border="1" style="border-collapse:collapse;width:100%;font-size:11px"><tr style="background:#d32f2f;color:white"><th>PREVIOUS OWNER</th><th>MOTOR NAME</th><th>COLOR</th><th>CHASSIS #</th><th>ENGINE #</th><th>LOCATION</th></tr>`;scanned.forEach(u=>{html+=`<tr><td>${u.prevOwner||'N/A'}</td><td>${u.brand} ${u.model}</td><td>${u.color}</td><td>${u.chassis}</td><td>${u.engine}</td><td>${u.location}</td></tr>`});html+=`</table></body></html>`;let blob=new Blob(['\ufeff',html],{type:'application/vnd.ms-word'});saveAs(blob,`Inventory-${month}.doc`);}
+function loadHistory(){let h='';let months=Object.keys(db.history).sort().reverse();if(months.length==0){historyList.innerHTML='No history yet';return;}months.forEach(m=>{let x=db.history[m];h+=`<div class="month-folder" onclick="toggleMonth('${m}')"><b>📁 ${m}</b> - ${x.date}<br><small>Scanned: ${x.scannedCount} | Missing: ${x.missing.length}</small><div id="details-${m}" class="month-details"><table><tr><th>Prev Owner</th><th>Motor</th><th>Color</th><th>Chassis</th><th>Engine</th><th>Location</th></tr>`;x.scanned.forEach(u=>{h+=`<tr><td>${u.prevOwner||'N/A'}</td><td>${u.brand} ${u.model}</td><td>${u.color}</td><td>${u.chassis}</td><td>${u.engine}</td><td>${u.location}</td></tr>`});h+=`</table><button class="btn-word" onclick="generateWordFile(db.history['${m}']);event.stopPropagation()">📄 Export This Month</button></div></div>`});historyList.innerHTML=h;}
+function toggleMonth(m){let d=document.getElementById('details-'+m);d.style.display=d.style.display=='block'?'none':'block';}
+function exportBackup(){let dataStr=JSON.stringify(db);let blob=new Blob([dataStr],{type:"application/json"});let date=new Date().toISOString().slice(0,10);saveAs(blob,`MotoBackup-${date}.json`);alert('Backup downloaded!');}
+function importBackup(){let file=document.getElementById('importFile').files[0];if(!file)return alert('Pili ka muna ng backup file');if(!confirm('WARNING: This will overwrite all current data. Continue?'))return;let reader=new FileReader();reader.onload=function(e){try{db=JSON.parse(e.target.result);saveDB();location.reload();alert('Restore successful!');}catch(err){alert('Invalid backup file');}};reader.readAsText(file);}
+function updateCounts(){let stock=Object.keys(db.units).length;let rel=Object.keys(db.released).length;totalCount.innerText=stock;unitCount.innerText=stock;releasedCount.innerText=rel;currentMonth.innerText=new Date().toLocaleString('en-US',{month:'long',year:'numeric'});}
+function saveDB(){localStorage.setItem('motoDBv66',JSON.stringify(db));}
+function clearInputs(){['brand','model','color','engine','chassis','prevOwner','defaultLocation'].forEach(i=>document.getElementById(i).value='');}
+window.onload=()=>{loadAllUnits();updateCounts();}
+
+// REGISTER SERVICE WORKER
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
+</body>
+</html>
